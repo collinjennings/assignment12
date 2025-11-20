@@ -15,7 +15,7 @@ exceptiongroup==1.2.2
 Faker==36.1.0
 fastapi==0.115.8
 greenlet==3.1.1
-h11==0.14.0
+h11==0.16.0
 httpcore==1.0.7
 httpx==0.28.1
 idna==3.10
@@ -36,7 +36,7 @@ pytest-cov==6.0.0
 pytest-cover==3.0.0
 pytest-coverage==0.0
 python-dotenv==1.0.1
-python-jose==3.3.0
+python-jose==3.4.0
 python-multipart==0.0.20
 requests==2.32.3
 rsa==4.9

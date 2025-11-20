@@ -75,11 +75,13 @@ def test_user_login(base_url: str):
     reg_url = f"{base_url}/auth/register"
     login_url = f"{base_url}/auth/login"
     
+    # Generate unique credentials
+    unique_id = uuid4()
     test_user = {
         "first_name": "Bob",
         "last_name": "Jones",
-        "email": "bob.jones@example.com",
-        "username": "bobjones",
+        "email": f"bob.jones.{unique_id}@example.com",
+        "username": f"bobjones_{unique_id}",
         "password": "SecurePass123!",
         "confirm_password": "SecurePass123!"
     }
