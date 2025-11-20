@@ -93,10 +93,12 @@ def setup_test_database(request):
     unless --preserve-db is provided.
     """
     logger.info("Setting up test database...")
+    logger.info(f"Test database URL: {settings.DATABASE_URL}") 
     try:
         Base.metadata.drop_all(bind=test_engine)
         Base.metadata.create_all(bind=test_engine)
-        init_db()
+        # REMOVE this line - we already created tables above
+        # init_db()
         logger.info("Test database initialized.")
     except Exception as e:
         logger.error(f"Error setting up test database: {str(e)}")
@@ -106,7 +108,8 @@ def setup_test_database(request):
 
     if not request.config.getoption("--preserve-db"):
         logger.info("Dropping test database tables...")
-        drop_db()
+        # Also remove drop_db() since it uses the wrong engine
+        Base.metadata.drop_all(bind=test_engine)
 
 @pytest.fixture
 def db_session() -> Generator[Session, None, None]:
