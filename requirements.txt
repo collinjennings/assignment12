@@ -25,7 +25,7 @@ passlib==1.7.4
 playwright==1.50.0
 pluggy==1.5.0
 psycopg2-binary==2.9.10
-pyasn1==0.6.1
+pyasn1==0.4.8
 pycparser==2.22
 pydantic==2.10.6
 pydantic-settings==2.7.1

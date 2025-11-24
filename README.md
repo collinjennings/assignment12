@@ -4,7 +4,7 @@
 
 # 📦 Project Setup
 
----
+--- a
 
 # 🧩 1. Install Homebrew (Mac Only)
 

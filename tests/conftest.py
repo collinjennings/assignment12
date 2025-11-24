@@ -12,10 +12,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from playwright.sync_api import sync_playwright, Browser, Page
 
-from app.database import Base, get_engine, get_sessionmaker
+from app.database import Base
 from app.models.user import User
 from app.core.config import settings
-from app.database_init import init_db, drop_db
 
 # ======================================================================================
 # Logging Configuration
@@ -32,8 +31,9 @@ logger = logging.getLogger(__name__)
 fake = Faker()
 Faker.seed(12345)
 
-test_engine = get_engine(database_url=settings.DATABASE_URL)
-TestingSessionLocal = get_sessionmaker(engine=test_engine)
+# IMPORTANT: Import the actual engine instance that the FastAPI app uses
+# Don't create a new engine - use the same one!
+from app.database import engine as test_engine, SessionLocal as TestingSessionLocal
 
 # ======================================================================================
 # Helper Functions
@@ -93,13 +93,18 @@ def setup_test_database(request):
     unless --preserve-db is provided.
     """
     logger.info("Setting up test database...")
-    logger.info(f"Test database URL: {settings.DATABASE_URL}") 
+    logger.info(f"Database URL: {settings.DATABASE_URL}")
+    
     try:
+        # Now test_engine and app engine are the SAME instance
+        # So we only need to create tables once
+        logger.info("Dropping existing tables...")
         Base.metadata.drop_all(bind=test_engine)
+        
+        logger.info("Creating tables...")
         Base.metadata.create_all(bind=test_engine)
-        # REMOVE this line - we already created tables above
-        # init_db()
-        logger.info("Test database initialized.")
+        
+        logger.info("Test database initialized successfully.")
     except Exception as e:
         logger.error(f"Error setting up test database: {str(e)}")
         raise
@@ -108,8 +113,10 @@ def setup_test_database(request):
 
     if not request.config.getoption("--preserve-db"):
         logger.info("Dropping test database tables...")
-        # Also remove drop_db() since it uses the wrong engine
-        Base.metadata.drop_all(bind=test_engine)
+        try:
+            Base.metadata.drop_all(bind=test_engine)
+        except Exception as e:
+            logger.warning(f"Error dropping tables: {e}")
 
 @pytest.fixture
 def db_session() -> Generator[Session, None, None]:
@@ -183,28 +190,50 @@ def fastapi_server():
     # Check if port is free; if not, pick an available port
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         if s.connect_ex(('127.0.0.1', base_port)) == 0:
+            logger.warning(f"Port {base_port} already in use, finding another port...")
             base_port = find_available_port()
             server_url = f'http://127.0.0.1:{base_port}/'
 
     logger.info(f"Starting FastAPI server on port {base_port}...")
 
+    # Create a temporary file to capture server output
+    import tempfile
+    log_file = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.log')
+    log_file_path = log_file.name
+    log_file.close()
+
     process = subprocess.Popen(
-        ['uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', str(base_port)],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        ['uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', str(base_port), '--log-level', 'info'],
+        stdout=open(log_file_path, 'w'),
+        stderr=subprocess.STDOUT,
         text=True,
-        cwd='.'  # ensure the working directory is set correctly
+        cwd='.'
     )
+
+    # Give it a moment to start
+    time.sleep(2)
+    
+    # Check if process crashed immediately
+    if process.poll() is not None:
+        # Process died, read the log
+        with open(log_file_path, 'r') as f:
+            log_content = f.read()
+        logger.error(f"Server process terminated immediately. Log:\n{log_content}")
+        raise ServerStartupError(f"Server process died immediately. Check log above.")
 
     # IMPORTANT: Use the /health endpoint for the check!
     health_url = f"{server_url}health"
+    logger.info(f"Waiting for server at {health_url}...")
+    
     if not wait_for_server(health_url, timeout=30):
-        stderr = process.stderr.read()
-        logger.error(f"Server failed to start. Uvicorn error: {stderr}")
+        # Read the log file
+        with open(log_file_path, 'r') as f:
+            log_content = f.read()
+        logger.error(f"Server failed to respond. Server log:\n{log_content}")
         process.terminate()
-        raise ServerStartupError(f"Failed to start test server on {health_url}")
+        raise ServerStartupError(f"Failed to start test server on {health_url}. Check log above.")
 
-    logger.info(f"Test server running on {server_url}.")
+    logger.info(f"✓ Test server running on {server_url}")
     yield server_url
 
     logger.info("Stopping test server...")
@@ -215,6 +244,13 @@ def fastapi_server():
     except subprocess.TimeoutExpired:
         process.kill()
         logger.warning("Test server forcefully stopped.")
+    
+    # Clean up log file
+    try:
+        import os
+        os.unlink(log_file_path)
+    except:
+        pass
 
 # ======================================================================================
 # Playwright Fixtures for UI Testing
@@ -259,8 +295,8 @@ def page(browser_context: Browser):
 def pytest_addoption(parser):
     """
     Add custom command line options:
-      --preserve-db : Keep test database after tests
-      --run-slow    : Run tests marked as 'slow'
+    --preserve-db : Keep test database after tests
+    --run-slow    : Run tests marked as 'slow'
     """
     parser.addoption("--preserve-db", action="store_true", help="Keep test database after tests")
     parser.addoption("--run-slow", action="store_true", help="Run tests marked as slow")

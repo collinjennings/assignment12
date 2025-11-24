@@ -7,7 +7,9 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 from app.core.config import get_settings
 from app.database import Base
-from app.models.calculation import Calculation
+
+# DON'T import Calculation here to avoid circular import!
+# SQLAlchemy will handle the relationship using the string reference below
 
 settings = get_settings()
 
@@ -39,7 +41,7 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
     
-    # Relationships
+    # Relationships - use string reference to avoid circular import
     calculations = relationship("Calculation", back_populates="user", cascade="all, delete-orphan")
     
     def __init__(self, *args, **kwargs):
@@ -137,6 +139,8 @@ class User(Base):
             is_verified=False
         )
         db.add(user)
+        db.commit()  # IMPORTANT: Commit the transaction
+        db.refresh(user)  # Refresh to get the generated ID
         return user
 
     @classmethod
@@ -161,7 +165,7 @@ class User(Base):
 
         # Update the last_login timestamp
         user.last_login = utcnow()
-        db.flush()
+        db.commit()  # Commit the last_login update
 
         # Generate tokens
         access_token = cls.create_access_token({"sub": str(user.id)})

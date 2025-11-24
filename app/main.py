@@ -14,10 +14,16 @@ from app.schemas.token import TokenResponse
 from app.schemas.user import UserCreate, UserResponse, UserLogin
 from app.database import Base, get_db, engine
 
+# Import all models to ensure they're registered with Base.metadata
+# This must happen before Base.metadata.create_all()
+import app.models.user  # noqa
+import app.models.calculation  # noqa
+
 # Create tables on startup
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Creating tables...")
+    print(f"Tables in metadata: {list(Base.metadata.tables.keys())}")
     Base.metadata.create_all(bind=engine)
     print("Tables created successfully!")
     yield
@@ -47,7 +53,17 @@ def read_health():
 )
 def register(user_create: UserCreate, db: Session = Depends(get_db)):
     # Exclude confirm_password before passing data to User.register
-    user_data = user_create.dict(exclude={"confirm_password"})
+    try:
+        user_data = user_create.model_dump(exclude={"confirm_password"})
+    except AttributeError:
+        # Fallback for older Pydantic versions
+        user_data = user_create.dict(exclude={"confirm_password"})
+    
+    # Ensure password doesn't exceed bcrypt's 72-byte limit
+    password_bytes = user_data["password"].encode('utf-8')
+    if len(password_bytes) > 72:
+        user_data["password"] = password_bytes[:72].decode('utf-8', errors='ignore')
+    
     try:
         user = User.register(db, user_data)
         db.commit()
