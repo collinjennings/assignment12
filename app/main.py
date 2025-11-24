@@ -14,8 +14,6 @@ from app.schemas.token import TokenResponse
 from app.schemas.user import UserCreate, UserResponse, UserLogin
 from app.database import Base, get_db, engine
 
-# Import all models to ensure they're registered with Base.metadata
-# This must happen before Base.metadata.create_all()
 import app.models.user  # noqa
 import app.models.calculation  # noqa
 

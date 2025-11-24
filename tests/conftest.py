@@ -31,8 +31,6 @@ logger = logging.getLogger(__name__)
 fake = Faker()
 Faker.seed(12345)
 
-# IMPORTANT: Import the actual engine instance that the FastAPI app uses
-# Don't create a new engine - use the same one!
 from app.database import engine as test_engine, SessionLocal as TestingSessionLocal
 
 # ======================================================================================
@@ -96,8 +94,6 @@ def setup_test_database(request):
     logger.info(f"Database URL: {settings.DATABASE_URL}")
     
     try:
-        # Now test_engine and app engine are the SAME instance
-        # So we only need to create tables once
         logger.info("Dropping existing tables...")
         Base.metadata.drop_all(bind=test_engine)
         
@@ -221,7 +217,6 @@ def fastapi_server():
         logger.error(f"Server process terminated immediately. Log:\n{log_content}")
         raise ServerStartupError(f"Server process died immediately. Check log above.")
 
-    # IMPORTANT: Use the /health endpoint for the check!
     health_url = f"{server_url}health"
     logger.info(f"Waiting for server at {health_url}...")
     

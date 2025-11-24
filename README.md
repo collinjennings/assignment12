@@ -1,5 +1,12 @@
 # Assignment 12 - User and Calculation Routes + Integration Testing
 
+This repository is a dockerized web calculator application, which uses SQLAlchemy and Pydantic to validate new users and add them to a Postgres database. This version of the application implements user registration and login endpoints, as well as calculation CRUD operations.
+
+The application also includes comprehensive testing for the calculator operations as well as for managing and validating the addition of new users to the database. The application features a `Calculation` model and schema that uses the Factory design pattern to instantiate different calculation types that are stored in the postgres database with the user fields. The `create` method of the `Calculation` class in instantiated as an abstract method and then each calculation type is a subclass of that method. 
+
+Additionally, the application includes comprehensive testing for the integration of the different database models and unit testing for the different calculation types. The application has docker containers for connecting to a postgres database server, accessing the pgAdmin dashboard, and running the application with all of its dependencies. You can view the DockerHub repository below. 
+
+DockerHub Repository: https://hub.docker.com/repository/docker/collinjennings/assignment12/general
 
 
 # 📦 Project Setup

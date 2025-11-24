@@ -10,7 +10,6 @@ import secrets
 
 from app.core.config import get_settings
 
-# Try to import Redis, fall back to mock if not available
 try:
     from app.auth.redis import add_to_blacklist, is_blacklisted
 except (ImportError, ModuleNotFoundError):

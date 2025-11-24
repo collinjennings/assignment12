@@ -135,7 +135,7 @@ def test_user_login(base_url: str):
 # ---------------------------------------------------------------------------
 # Calculations Endpoints Integration Tests
 # ---------------------------------------------------------------------------
-# Note: All calculation creation requests now use the /calculations endpoint (not /calculations/add)
+
 def test_create_calculation_addition(base_url: str):
     user_data = {
         "first_name": "Calc",
